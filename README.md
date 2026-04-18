@@ -15,9 +15,10 @@ car stereo display.
 - Right-to-left marquee scroll, then fade out
 - Gaussian glow halos around lit LEDs (additive blending)
 - Soft blurry panel borders
-- Only appears during races (not in menus, garage, or results)
+- Only appears during races (not in menus, garage, loading screens, or results)
 - Reads the game's `music.cfg` for real track metadata
-- Configurable pointer chain and LED color via `.ini` file
+- **In-race song skip**: `,` = previous track, `.` = next track (configurable)
+- Configurable pointer chain, LED color, and skip-key VK codes via `.ini` file
 
 ## Installation
 
@@ -59,11 +60,27 @@ Edit `scripts\JuicedNowPlaying.ini` to customize:
 | `TrackIdOffsets` | `[Memory]` | Comma-separated pointer chain offsets |
 | `InRaceFlag` | `[Memory]` | Offset of the in-race boolean flag |
 | `LedColor` | `[Display]` | `R, G, B` (0-255) for the LED dot color |
+| `PrevTrackKey` | `[Controls]` | VK code for skip-previous (default `0xBC` = `,`) |
+| `NextTrackKey` | `[Controls]` | VK code for skip-next (default `0xBE` = `.`) |
 
-The default addresses were verified on the original 2005 retail release
-(unpatched). If they don't work on your version, see
-[Re-finding the addresses](#re-finding-the-addresses-with-cheat-engine)
+All values accept hex (`0xBC`) or decimal. Changes take effect on the next
+game launch — no rebuild needed. The default addresses were verified on the
+original 2005 retail release (unpatched). If they don't work on your version,
+see [Re-finding the addresses](#re-finding-the-addresses-with-cheat-engine)
 below.
+
+#### Skip-key reference
+
+Common VK codes if you want to remap the skip keys:
+
+| Key | VK code |
+|-----|---------|
+| `,` | `0xBC` (default prev) |
+| `.` | `0xBE` (default next) |
+| `;` | `0xBA` |
+| `'` | `0xDE` |
+
+Full list: [Microsoft Virtual-Key Codes](https://learn.microsoft.com/windows/win32/inputdev/virtual-key-codes)
 
 ## Design
 
@@ -101,9 +118,14 @@ DllMain (dllmain.cpp)
         |-> patch vtable slots 42 (EndScene) and 16 (Reset)
 
 EndScene hook (d3d9_hook.cpp)
+  |-> skip keys: GetAsyncKeyState for prev/next track (VK codes from ini)
+  |-> two-part race gate:
+  |     primary  — InRaceFlag == 0 -> hide and bail
+  |     secondary — [root+0x40] != null -> loading screen, hide and bail
+  |                 (one-shot per race; ignored after loading screen clears)
   |-> every 10 frames: TrackWatch_ReadCurrent()  -- SEH-wrapped pointer walk
   |-> if track changed: trigger FADE_IN -> SCROLL -> FADE_OUT -> HIDDEN
-  |-> BitmapFont_DrawNowPlaying()  -- single state-block save/restore
+  |-> draw overlay (single state-block save/restore):
         |-> soft panel background (untextured quads)
         |-> unlit LED grid (fixed position)
         |-> lit LEDs (scrolled, scissor-clipped)
@@ -125,6 +147,10 @@ EndScene hook (d3d9_hook.cpp)
   compile time (font glyphs, track table, vertex scratch buffers).
 - **DrawPrimitiveUP** with pre-transformed vertices (`D3DFVF_XYZRHW`)
   for all geometry. No vertex buffers, no shaders, no D3DX dependency.
+- **Two-part race gate**: `g_wasGated` is armed only by the `InRaceFlag`
+  0→1 transition; the `[root+0x40]` loading-screen pointer is only checked
+  until it first clears per race (`g_raceLoaded`). This prevents spurious
+  animation resets when the pause menu briefly touches the same field.
 
 ### Font
 
@@ -180,15 +206,15 @@ The write instruction is `Juiced.exe+C60C69: mov [ecx+20], edx`.
 
 ### In-race flag (static)
 
-A simple boolean: `1` during a race, `0` otherwise.
+A simple boolean: `1` during a race (including the pause menu), `0`
+otherwise.
 
 1. In CE, scan for `0` while in the main menu.
 2. Start a race. Next Scan for `1`.
 3. Return to menu. Next Scan for `0`.
 4. Repeat 2-3 times. Look for **static** (green) `Juiced.exe+XXXXXX`
    addresses.
-5. Pick one that stays `1` during the pause menu. Update `InRaceFlag` in
-   the `.ini`.
+5. Update `InRaceFlag` in the `.ini`.
 
 **Verified addresses** (retail 2005 unpatched):
 - `Juiced.exe + 0x0032024C` (used by default)
@@ -208,16 +234,12 @@ cd JuicedNowPlaying
 build.bat
 ```
 
-Or manually:
+`build.bat` invokes `cl.exe` directly (bypassing MSBuild's LTCG
+incremental-link cache, which can silently reuse stale object code).
+All translation units are always recompiled from source. The script also
+copies the built `.asi` to `C:\Games\Juiced\scripts\` automatically.
 
-```bat
-MSBuild.exe JuicedNowPlaying.vcxproj /p:Configuration=Release /p:Platform=Win32
-```
-
-Output: `Release\JuicedNowPlaying.asi`
-
-The `build.bat` script also copies the built `.asi` to
-`C:\Games\Juiced\scripts\` automatically.
+Output: `manual_build\JuicedNowPlaying.asi`
 
 ## File structure
 
@@ -230,10 +252,11 @@ JuicedNowPlaying.ini           Runtime config (ships next to .asi)
 dllmain.cpp                    DLL entry point, orchestrates init
 d3d9_hook.cpp / .h             EndScene/Reset vtable hook + state machine
 bitmap_font.cpp / .h           Dot-matrix renderer (untextured + glow)
+vfd_font.cpp / .h              VFD-style font texture pipeline
 font5x7.h                      Hand-designed 5x7 ASCII glyph table
 music_cfg.cpp / .h             music.cfg parser (track name table)
-ini_reader.cpp / .h            Minimal .ini reader for memory addresses
-track_watch.cpp / .h           SEH-wrapped pointer chain walker
+ini_reader.cpp / .h            Minimal .ini reader for memory addresses + key codes
+track_watch.cpp / .h           SEH-wrapped pointer chain walker + config accessors
 framework.h                    Win32 lean-and-mean header
 pch.h / pch.cpp                Precompiled header
 ```
