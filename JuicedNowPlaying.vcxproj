@@ -98,6 +98,7 @@
     <ClInclude Include="music_cfg.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="track_watch.h" />
+    <ClInclude Include="vfd_font.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="bitmap_font.cpp" />
@@ -106,6 +107,7 @@
     <ClCompile Include="ini_reader.cpp" />
     <ClCompile Include="music_cfg.cpp" />
     <ClCompile Include="track_watch.cpp" />
+    <ClCompile Include="vfd_font.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

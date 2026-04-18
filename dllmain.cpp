@@ -11,6 +11,7 @@
 #include "d3d9_hook.h"
 #include "music_cfg.h"
 #include "track_watch.h"
+#include "vfd_font.h"
 #include <stdio.h>
 #include <time.h>
 
@@ -67,8 +68,12 @@ BOOL APIENTRY DllMain(HMODULE /*hModule*/, DWORD reason, LPVOID /*lpReserved*/)
     if (reason == DLL_PROCESS_ATTACH) {
         WriteLoadLine();
         MusicCfg_Load();
+        VfdFont_Init();
         TrackWatch_Init();
         D3D9Hook_Install();
+    }
+    if (reason == DLL_PROCESS_DETACH) {
+        VfdFont_Shutdown();
     }
     return TRUE;
 }

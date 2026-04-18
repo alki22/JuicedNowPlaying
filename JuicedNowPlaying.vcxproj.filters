@@ -32,6 +32,9 @@
     <ClCompile Include="track_watch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="vfd_font.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -56,6 +59,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="track_watch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vfd_font.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

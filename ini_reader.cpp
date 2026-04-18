@@ -84,6 +84,8 @@ bool Ini_Load(IniConfig* out)
     out->ledR = 0;
     out->ledG = 255;
     out->ledB = 255;
+    out->prevTrackKey = 0xBA;  // VK_OEM_1 = ;
+    out->nextTrackKey = 0xDE;  // VK_OEM_7 = '
 
     char path[MAX_PATH] = {};
     if (!ResolveIniPath(path, sizeof(path))) return false;
@@ -106,9 +108,21 @@ bool Ini_Load(IniConfig* out)
                              buf, sizeof(buf), path);
     if (buf[0]) out->inRaceFlag = ParseUInt(buf);
 
+    GetPrivateProfileStringA("Memory", "InPauseFlag", "",
+                             buf, sizeof(buf), path);
+    if (buf[0]) out->inPauseFlag = ParseUInt(buf);
+
     GetPrivateProfileStringA("Display", "LedColor", "",
                              buf, sizeof(buf), path);
     if (buf[0]) ParseRgb(buf, &out->ledR, &out->ledG, &out->ledB);
+
+    GetPrivateProfileStringA("Controls", "PrevTrackKey", "",
+                             buf, sizeof(buf), path);
+    if (buf[0]) out->prevTrackKey = ParseUInt(buf);
+
+    GetPrivateProfileStringA("Controls", "NextTrackKey", "",
+                             buf, sizeof(buf), path);
+    if (buf[0]) out->nextTrackKey = ParseUInt(buf);
 
     return true;
 }
